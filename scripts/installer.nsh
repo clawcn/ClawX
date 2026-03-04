@@ -3,8 +3,7 @@
 ; Install: enables long paths, adds resources\cli to user PATH for openclaw CLI.
 ; Uninstall: removes the PATH entry and optionally deletes user data.
 
-!ifndef nsProcess_included
-  !define nsProcess_included
+!ifndef nsProcess::FindProcess
   !include "nsProcess.nsh"
 !endif
 
@@ -61,7 +60,7 @@
         Goto loop
       ${endIf}
     not_running:
-      nsProcess::Unload
+      ${nsProcess::Unload}
   ${endIf}
 !macroend
 
