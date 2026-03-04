@@ -37,6 +37,14 @@ import { ensureBuiltinSkillsInstalled } from '../utils/skill-config';
 // set `"disable-hardware-acceleration": false` in the app config (future).
 app.disableHardwareAcceleration();
 
+// Ensure only one app main instance runs at a time.
+// This prevents duplicate startup flows (double logger init, double gateway
+// start, duplicate skill installation races) when Windows launches ClawX twice.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
 // Global references
 let mainWindow: BrowserWindow | null = null;
 const gatewayManager = new GatewayManager();
@@ -242,37 +250,54 @@ async function initialize(): Promise<void> {
   });
 }
 
-// Application lifecycle
-app.whenReady().then(() => {
-  initialize();
-
-  // Register activate handler AFTER app is ready to prevent
-  // "Cannot create BrowserWindow before app is ready" on macOS.
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createWindow();
-    } else if (mainWindow && !mainWindow.isDestroyed()) {
-      // On macOS, clicking the dock icon should show the window if it's hidden
+if (gotSingleInstanceLock) {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
       mainWindow.show();
       mainWindow.focus();
+      return;
+    }
+
+    if (app.isReady()) {
+      mainWindow = createWindow();
     }
   });
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  // Application lifecycle
+  app.whenReady().then(() => {
+    initialize();
 
-app.on('before-quit', () => {
-  setQuitting();
-  // Fire-and-forget: do not await gatewayManager.stop() here.
-  // Awaiting inside before-quit can stall Electron's quit sequence.
-  void gatewayManager.stop().catch((err) => {
-    logger.warn('gatewayManager.stop() error during quit:', err);
+    // Register activate handler AFTER app is ready to prevent
+    // "Cannot create BrowserWindow before app is ready" on macOS.
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        mainWindow = createWindow();
+      } else if (mainWindow && !mainWindow.isDestroyed()) {
+        // On macOS, clicking the dock icon should show the window if it's hidden
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    });
   });
-});
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
+
+  app.on('before-quit', () => {
+    setQuitting();
+    // Fire-and-forget: do not await gatewayManager.stop() here.
+    // Awaiting inside before-quit can stall Electron's quit sequence.
+    void gatewayManager.stop().catch((err) => {
+      logger.warn('gatewayManager.stop() error during quit:', err);
+    });
+  });
+}
 
 // Export for testing
 export { mainWindow, gatewayManager };
