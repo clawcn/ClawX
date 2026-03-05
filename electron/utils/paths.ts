@@ -3,6 +3,7 @@
  * Cross-platform path resolution helpers
  */
 import { app } from 'electron';
+import path from 'path';
 import { join } from 'path';
 import { homedir } from 'os';
 import { existsSync, mkdirSync, readFileSync, realpathSync } from 'fs';
@@ -17,20 +18,43 @@ export {
 } from './win-shell';
 
 /**
+ * Resolve the effective home directory, matching OpenClaw's resolution order:
+ * OPENCLAW_HOME → HOME → USERPROFILE → os.homedir()
+ *
+ * This ensures ClawX writes config to the same directory the OpenClaw gateway
+ * reads from, even when the user has set a custom HOME env var (common on Windows).
+ */
+export function resolveHomeDir(): string {
+  const openclawHome = process.env.OPENCLAW_HOME?.trim();
+  if (openclawHome) {
+    if (openclawHome === '~' || openclawHome.startsWith('~/') || openclawHome.startsWith('~\\')) {
+      const fallback = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir();
+      return path.resolve(openclawHome.replace(/^~(?=$|[\\/])/, fallback));
+    }
+    return path.resolve(openclawHome);
+  }
+  const envHome = process.env.HOME?.trim();
+  if (envHome) return path.resolve(envHome);
+  const userProfile = process.env.USERPROFILE?.trim();
+  if (userProfile) return path.resolve(userProfile);
+  return homedir();
+}
+
+/**
  * Expand ~ to home directory
  */
-export function expandPath(path: string): string {
-  if (path.startsWith('~')) {
-    return path.replace('~', homedir());
+export function expandPath(p: string): string {
+  if (p.startsWith('~')) {
+    return p.replace('~', resolveHomeDir());
   }
-  return path;
+  return p;
 }
 
 /**
  * Get OpenClaw config directory
  */
 export function getOpenClawConfigDir(): string {
-  return join(homedir(), '.openclaw');
+  return join(resolveHomeDir(), '.openclaw');
 }
 
 /**
@@ -44,7 +68,7 @@ export function getOpenClawSkillsDir(): string {
  * Get ClawX config directory
  */
 export function getClawXConfigDir(): string {
-  return join(homedir(), '.clawx');
+  return join(resolveHomeDir(), '.clawx');
 }
 
 /**

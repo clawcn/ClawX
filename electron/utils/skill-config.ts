@@ -9,11 +9,10 @@ import { readFile, writeFile, access, cp, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { constants } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
-import { getOpenClawDir } from './paths';
+import { getOpenClawDir, resolveHomeDir } from './paths';
 import { logger } from './logger';
 
-const OPENCLAW_CONFIG_PATH = join(homedir(), '.openclaw', 'openclaw.json');
+const OPENCLAW_CONFIG_PATH = join(resolveHomeDir(), '.openclaw', 'openclaw.json');
 
 interface SkillEntry {
     enabled?: boolean;
@@ -142,10 +141,10 @@ export async function getAllSkillConfigs(): Promise<Record<string, SkillEntry>> 
  * extensions directory and are available in both dev and packaged builds.
  */
 const BUILTIN_SKILLS = [
-    { slug: 'feishu-doc',   sourceExtension: 'feishu' },
+    { slug: 'feishu-doc', sourceExtension: 'feishu' },
     { slug: 'feishu-drive', sourceExtension: 'feishu' },
-    { slug: 'feishu-perm',  sourceExtension: 'feishu' },
-    { slug: 'feishu-wiki',  sourceExtension: 'feishu' },
+    { slug: 'feishu-perm', sourceExtension: 'feishu' },
+    { slug: 'feishu-wiki', sourceExtension: 'feishu' },
 ] as const;
 
 /**
@@ -155,7 +154,7 @@ const BUILTIN_SKILLS = [
  * block the normal startup flow.
  */
 export async function ensureBuiltinSkillsInstalled(): Promise<void> {
-    const skillsRoot = join(homedir(), '.openclaw', 'skills');
+    const skillsRoot = join(resolveHomeDir(), '.openclaw', 'skills');
 
     for (const { slug, sourceExtension } of BUILTIN_SKILLS) {
         const targetDir = join(skillsRoot, slug);

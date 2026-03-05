@@ -23,7 +23,7 @@ import {
   getAllProvidersWithKeyInfo,
   type ProviderConfig,
 } from '../utils/secure-storage';
-import { getOpenClawStatus, getOpenClawDir, getOpenClawConfigDir, getOpenClawSkillsDir, ensureDir } from '../utils/paths';
+import { getOpenClawStatus, getOpenClawDir, getOpenClawConfigDir, getOpenClawSkillsDir, ensureDir, resolveHomeDir } from '../utils/paths';
 import { getOpenClawCliCommand } from '../utils/openclaw-cli';
 import { getAllSettings, getSetting, resetSettings, setSetting, type AppSettings } from '../utils/store';
 import {
@@ -697,7 +697,7 @@ function registerGatewayHandlers(
  */
 function registerOpenClawHandlers(): void {
   async function ensureDingTalkPluginInstalled(): Promise<{ installed: boolean; warning?: string }> {
-    const targetDir = join(homedir(), '.openclaw', 'extensions', 'dingtalk');
+    const targetDir = join(resolveHomeDir(), '.openclaw', 'extensions', 'dingtalk');
     const targetManifest = join(targetDir, 'openclaw.plugin.json');
 
     if (existsSync(targetManifest)) {
@@ -727,7 +727,7 @@ function registerOpenClawHandlers(): void {
     }
 
     try {
-      mkdirSync(join(homedir(), '.openclaw', 'extensions'), { recursive: true });
+      mkdirSync(join(resolveHomeDir(), '.openclaw', 'extensions'), { recursive: true });
       rmSync(targetDir, { recursive: true, force: true });
       cpSync(sourceDir, targetDir, { recursive: true, dereference: true });
 
@@ -1973,7 +1973,7 @@ function mimeToExt(mimeType: string): string {
   return '';
 }
 
-const OUTBOUND_DIR = join(homedir(), '.openclaw', 'media', 'outbound');
+const OUTBOUND_DIR = join(resolveHomeDir(), '.openclaw', 'media', 'outbound');
 
 /**
  * Generate a preview data URL for image files.
